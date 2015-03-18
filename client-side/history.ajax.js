@@ -9,7 +9,7 @@ var findSnippets = function () {
 	var result = [];
 	$('[id^="snippet-"]').each(function () {
 		var $el = $(this);
-		if (!$el.is('[data-history-nocache]')) {
+		if (!$el.is('[data-history-nocache]') && $el.parents('[id^="snippet-"]').length === 0) {
 			result.push({
 				id: $el.attr('id'),
 				html: $el.html()
