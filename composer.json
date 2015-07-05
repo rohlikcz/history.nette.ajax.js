@@ -13,7 +13,8 @@
 	],
 	"require": {
 		"php": ">=5.3.1",
-		"nette/nette": "~2.0"
+		"nette/nette": "~2.0",
+		"kdyby/request-stack": "@dev"
 	},
 	"autoload": {
 		"classmap": ["src/"]
