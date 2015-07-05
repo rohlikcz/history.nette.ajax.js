@@ -70,6 +70,8 @@ $.nette.ext('history', {
 	before: function (xhr, settings) {
 		if (!settings.nette || (this.off && !settings.nette.el.is('[data-history-on]'))) {
 			this.href = null;
+		} else if (!settings.nette.form && !settings.nette.ui.href) {
+			this.href = settings.url;
 		} else if (!settings.nette.form) {
 			this.href = settings.nette.ui.href;
 		} else if (settings.nette.form.get(0).method === 'get') {
