@@ -77,6 +77,10 @@ $.nette.ext('history', {
 		} else {
 			this.href = null;
 		}
+
+		if (this.href) {
+			xhr.setRequestHeader('X-History-Request', 'true');
+		}
 	},
 	success: function (payload) {
 		var redirect = payload.redirect || payload.url; // backwards compatibility for 'url'
