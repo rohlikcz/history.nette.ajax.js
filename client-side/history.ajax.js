@@ -5,19 +5,6 @@ if (!(window.history && history.pushState && window.history.replaceState && !nav
 
 $.nette.ext('redirect', false);
 
-var findSnippets = function () {
-	var result = [];
-	$('[id^="snippet-"]').each(function () {
-		var $el = $(this);
-		if (!$el.is('[data-history-nocache]')) {
-			result.push({
-				id: $el.attr('id'),
-				html: $el.html()
-			});
-		}
-	});
-	return result;
-};
 var handleState = function (context, name, args) {
 	var handler = context['handle' + name.substring(0, 1).toUpperCase() + name.substring(1)];
 	if (handler) {
@@ -64,7 +51,7 @@ $.nette.ext('history', {
 			nette: true,
 			href: window.location.href,
 			title: document.title,
-			ui: this.cache ? findSnippets() : null
+			ui: this.cache ? this.extractSnippets({}) : null
 		}, document.title, window.location.href);
 	},
 	before: function (xhr, settings) {
@@ -95,12 +82,7 @@ $.nette.ext('history', {
 			}
 		}
 		if (this.href && this.href != window.location.href) {
-			history.pushState({
-				nette: true,
-				href: this.href,
-				title: document.title,
-				ui: this.cache ? findSnippets() : null
-			}, document.title, this.href);
+			this.pushState(this.href, document.title, {});
 		}
 		this.href = null;
 		this.popped = true;
@@ -112,6 +94,32 @@ $.nette.ext('history', {
 	popped: false,
 	handleTitle: function (title) {
 		document.title = title;
+	},
+	pushState: function (href, title, newSnippets) {
+		history.pushState({
+			nette: true,
+			href: href,
+			title: title,
+			ui: this.cache ? this.extractSnippets(newSnippets) : null
+		}, title, href);
+	},
+	extractSnippets: function (newSnippets) {
+		var result = [];
+		$('[id^="snippet-"]').each(function () {
+			var $el = $(this);
+			if (!$el.is('[data-history-nocache]')) {
+				var id = $el.attr('id');
+				if (!newSnippets.hasOwnProperty(id)) {
+					result.push({id: id, html: $el.html()});
+				}
+			}
+		});
+		for (var k in newSnippets) {
+			if (newSnippets.hasOwnProperty(k)) {
+				result.push({id: k, html: newSnippets[k]});
+			}
+		}
+		return result;
 	}
 });
 
