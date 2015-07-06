@@ -19,7 +19,17 @@ $.nette.ext('history', {
 			this.handleUI = function (domCache) {
 				var snippets = {};
 				$.each(domCache, function () {
-					snippets[this.id] = this.html;
+					var html;
+					if (this.excludedIds) {
+						var $html = $('<div>').html(this.html);
+						this.excludedIds.forEach(function (id) {
+							$html.find('#' + id).html($('#' + id).html());
+						});
+						html = $html.html();
+					} else {
+						html = this.html;
+					}
+					snippets[this.id] = html;
 				});
 				snippetsExt.updateSnippets(snippets, true);
 				$.nette.load();
@@ -104,22 +114,29 @@ $.nette.ext('history', {
 		}, title, href);
 	},
 	extractSnippets: function (newSnippets) {
-		var result = [];
-		$('[id^="snippet-"]').each(function () {
-			var $el = $(this);
-			if (!$el.is('[data-history-nocache]')) {
-				var id = $el.attr('id');
-				if (!newSnippets.hasOwnProperty(id)) {
-					result.push({id: id, html: $el.html()});
-				}
-			}
-		});
-		for (var k in newSnippets) {
-			if (newSnippets.hasOwnProperty(k)) {
-				result.push({id: k, html: newSnippets[k]});
+		var snippets = {};
+
+		function createSnippet(id) {
+			if (id in snippets) {
+				return snippets[id];
+			} else {
+				var snippet = {id: id, html: null, excludedIds: []};
+				snippets[id] = snippet;
+				return snippet;
 			}
 		}
-		return result;
+
+		$('[id^="snippet-"]').each(function () {
+			var $el = $(this), id = $el.attr('id'), cache = !$el.is('[data-history-nocache]'), parents = $el.parents('[id^="snippet-"]');
+
+			if (cache && parents.length === 0) {
+				createSnippet(id).html = newSnippets.hasOwnProperty(id) ? newSnippets[id] : $el.html();
+			} else if (!cache && parents.length > 0) {
+				createSnippet(parents.last().attr('id')).excludedIds.push(id);
+			}
+		});
+
+		return snippets;
 	}
 });
 
