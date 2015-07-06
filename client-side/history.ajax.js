@@ -75,7 +75,7 @@ $.nette.ext('history', {
 		var redirect = payload.redirect || payload.url; // backwards compatibility for 'url'
 		if (redirect) {
 			var regexp = new RegExp('//' + window.location.host + '($|/)');
-			if ((redirect.substring(0,4) === 'http') ? regexp.test(redirect) : true) {
+			if (this.href && ((redirect.substring(0,4) === 'http') ? regexp.test(redirect) : true)) {
 				this.href = redirect;
 			} else {
 				window.location.href = redirect;
