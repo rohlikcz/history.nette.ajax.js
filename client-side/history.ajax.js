@@ -5,6 +5,7 @@ if (!(window.history && history.pushState && window.history.replaceState && !nav
 
 $.nette.ext('redirect', false);
 
+var blockPopstateEvent = document.readyState !== 'complete';
 var handleState = function (context, name, args) {
 	var handler = context['handle' + name.substring(0, 1).toUpperCase() + name.substring(1)];
 	if (handler) {
@@ -14,6 +15,8 @@ var handleState = function (context, name, args) {
 
 $.nette.ext('history', {
 	init: function () {
+		setTimeout(function(){ blockPopstateEvent = false; }, 0);
+
 		var snippetsExt;
 		if (this.cache && (snippetsExt = $.nette.ext('snippets'))) {
 			this.handleUI = function (domCache) {
@@ -36,16 +39,12 @@ $.nette.ext('history', {
 			};
 		}
 
-		this.popped = !!('state' in window.history) && !!window.history.state;
-		var initialUrl = window.location.href;
-
 		$(window).on('popstate.nette', $.proxy(function (e) {
-			var state = e.originalEvent.state || this.initialState;
-			var initialPop = (!this.popped && initialUrl === state.href);
-			this.popped = true;
-			if (initialPop) {
+			if (blockPopstateEvent && document.readyState === 'complete') {
 				return;
 			}
+
+			var state = e.originalEvent.state || this.initialState;
 			if (this.cache && state.ui) {
 				handleState(this, 'UI', [state.ui]);
 				handleState(this, 'title', [state.title]);
@@ -95,13 +94,11 @@ $.nette.ext('history', {
 			this.pushState(this.href, document.title, {});
 		}
 		this.href = null;
-		this.popped = true;
 	}
 }, {
 	href: null,
 	off: false,
 	cache: true,
-	popped: false,
 	handleTitle: function (title) {
 		document.title = title;
 	},
