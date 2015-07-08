@@ -15,7 +15,6 @@ var handleState = function (context, name, args) {
 
 $.nette.ext('history', {
 	init: function () {
-		setTimeout(function(){ blockPopstateEvent = false; }, 0);
 
 		var snippetsExt;
 		if (this.cache && (snippetsExt = $.nette.ext('snippets'))) {
@@ -39,12 +38,24 @@ $.nette.ext('history', {
 			};
 		}
 
+		this.initialState = {
+			nette: true,
+			href: window.location.href,
+			title: document.title,
+			ui: this.cache ? this.extractSnippets({}) : null
+		};
+		history.replaceState(this.initialState, document.title, window.location.href);
+
 		$(window).on('popstate.nette', $.proxy(function (e) {
 			if (blockPopstateEvent && document.readyState === 'complete') {
 				return;
 			}
 
-			var state = e.originalEvent.state || this.initialState;
+			var state = e.originalEvent.state;
+			if (!state) {
+				return;
+			}
+
 			if (this.cache && state.ui) {
 				handleState(this, 'UI', [state.ui]);
 				handleState(this, 'title', [state.title]);
@@ -56,12 +67,7 @@ $.nette.ext('history', {
 			}
 		}, this));
 
-		history.replaceState(this.initialState = {
-			nette: true,
-			href: window.location.href,
-			title: document.title,
-			ui: this.cache ? this.extractSnippets({}) : null
-		}, document.title, window.location.href);
+		setTimeout(function () { blockPopstateEvent = false; }, 0);
 	},
 	before: function (xhr, settings) {
 		if (!settings.nette || (this.off && !settings.nette.el.is('[data-history-on]'))) {
