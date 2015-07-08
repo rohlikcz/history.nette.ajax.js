@@ -44,6 +44,7 @@ $.nette.ext('history', {
 			title: document.title,
 			ui: this.cache ? this.extractSnippets({}) : null
 		};
+		this.beforePushStateQueue.fire(this.initialState, null);
 		history.replaceState(this.initialState, document.title, window.location.href);
 
 		$(window).on('popstate.nette', $.proxy(function (e) {
@@ -65,6 +66,7 @@ $.nette.ext('history', {
 					off: ['history']
 				});
 			}
+			this.afterPopStateQueue.fire(state);
 		}, this));
 
 		setTimeout(function () { blockPopstateEvent = false; }, 0);
@@ -86,7 +88,7 @@ $.nette.ext('history', {
 			xhr.setRequestHeader('X-History-Request', 'true');
 		}
 	},
-	success: function (payload) {
+	success: function (payload, status, xhr, settings) {
 		var redirect = payload.redirect || payload.url; // backwards compatibility for 'url'
 		if (redirect) {
 			var regexp = new RegExp('//' + window.location.host + '($|/)');
@@ -97,7 +99,7 @@ $.nette.ext('history', {
 			}
 		}
 		if (this.href && this.href != window.location.href) {
-			this.pushState(this.href, document.title, {});
+			this.pushState(this.href, document.title, {}, settings.nette && settings.nette.el);
 		}
 		this.href = null;
 	}
@@ -105,16 +107,27 @@ $.nette.ext('history', {
 	href: null,
 	off: false,
 	cache: true,
+	beforePushStateQueue: $.Callbacks(),
+	afterPopStateQueue: $.Callbacks(),
+
+	beforePushState: function (callback) {
+		this.beforePushStateQueue.add(callback);
+	},
+	afterPopState: function (callback) {
+		this.afterPopStateQueue.add(callback);
+	},
 	handleTitle: function (title) {
 		document.title = title;
 	},
-	pushState: function (href, title, newSnippets) {
-		history.pushState({
+	pushState: function (href, title, newSnippets, sender) {
+		var state = {
 			nette: true,
 			href: href,
 			title: title,
 			ui: this.cache ? this.extractSnippets(newSnippets) : null
-		}, title, href);
+		}
+		this.beforePushStateQueue.fire(state, sender);
+		history.pushState(state, title, href);
 	},
 	extractSnippets: function (newSnippets) {
 		var snippets = {};
