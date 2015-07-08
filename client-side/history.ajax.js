@@ -125,7 +125,7 @@ $.nette.ext('history', {
 			href: href,
 			title: title,
 			ui: this.cache ? this.extractSnippets(newSnippets) : null
-		}
+		};
 		this.beforePushStateQueue.fire(state, sender);
 		history.pushState(state, title, href);
 	},
