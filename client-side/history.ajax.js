@@ -6,46 +6,18 @@ if (!(window.history && history.pushState && window.history.replaceState && !nav
 $.nette.ext('redirect', false);
 
 var blockPopstateEvent = document.readyState !== 'complete';
-var handleState = function (context, name, args) {
-	var handler = context['handle' + name.substring(0, 1).toUpperCase() + name.substring(1)];
-	if (handler) {
-		handler.apply(context, args);
-	}
-};
+var uiStates = [];
+var currentStateId = -1;
 
 $.nette.ext('history', {
 	init: function () {
+		var self = this, initialState;
 
-		var snippetsExt;
-		if (this.cache && (snippetsExt = $.nette.ext('snippets'))) {
-			this.handleUI = function (domCache) {
-				var snippets = {};
-				$.each(domCache, function () {
-					var html;
-					if (this.excludedIds) {
-						var $html = $('<div>').html(this.html);
-						this.excludedIds.forEach(function (id) {
-							$html.find('#' + id).html($('#' + id).html());
-						});
-						html = $html.html();
-					} else {
-						html = this.html;
-					}
-					snippets[this.id] = html;
-				});
-				snippetsExt.updateSnippets(snippets, true);
-				$.nette.load();
-			};
-		}
+		this.snippetsExt = $.nette.ext('snippets');
 
-		this.initialState = {
-			nette: true,
-			href: window.location.href,
-			title: document.title,
-			ui: this.cache ? this.extractSnippets({}) : null
-		};
-		this.beforePushStateQueue.fire(this.initialState, null);
-		history.replaceState(this.initialState, document.title, window.location.href);
+		initialState = this.createState(window.location.href, document.title, {});
+		this.beforePushStateQueue.fire(initialState, null);
+		history.replaceState(initialState, initialState.title, initialState.href);
 
 		$(window).on('popstate.nette', $.proxy(function (e) {
 			if (blockPopstateEvent && document.readyState === 'complete') {
@@ -57,16 +29,18 @@ $.nette.ext('history', {
 				return;
 			}
 
-			if (this.cache && state.ui) {
-				handleState(this, 'UI', [state.ui]);
-				handleState(this, 'title', [state.title]);
+			this.saveSnippets();
+			currentStateId = state.id;
+
+			var uiState = uiStates[state.id]
+			if (uiState) {
+				this.updateTitle(state.title);
+				this.updateSnippets(uiState.snippets)
 			} else {
-				$.nette.ajax({
-					url: state.href,
-					off: ['history']
-				});
+				$.nette.ajax({url: state.href, off: ['history']});
 			}
-			this.afterPopStateQueue.fire(state);
+
+			this.afterPopStateQueue.fire(state, uiState);
 		}, this));
 
 		setTimeout(function () { blockPopstateEvent = false; }, 0);
@@ -85,6 +59,7 @@ $.nette.ext('history', {
 		}
 
 		if (this.href) {
+			this.saveSnippets();
 			xhr.setRequestHeader('X-History-Request', 'true');
 		}
 	},
@@ -106,28 +81,62 @@ $.nette.ext('history', {
 }, {
 	href: null,
 	off: false,
-	cache: true,
+	snippetsExt: null,
+
+	beforeSaveStateQueue: $.Callbacks(),
 	beforePushStateQueue: $.Callbacks(),
 	afterPopStateQueue: $.Callbacks(),
 
+	beforeSaveState: function (callback) {
+		this.beforeSaveStateQueue.add(callback);
+	},
 	beforePushState: function (callback) {
 		this.beforePushStateQueue.add(callback);
 	},
 	afterPopState: function (callback) {
 		this.afterPopStateQueue.add(callback);
 	},
-	handleTitle: function (title) {
+	updateTitle: function (title) {
 		document.title = title;
 	},
-	pushState: function (href, title, newSnippets, sender) {
-		var state = {
+	updateSnippets: function (snippets) {
+		var updatedSnippets = {};
+		$.each(snippets, function () {
+			var html;
+			if (this.excludedIds) {
+				var $html = $('<div>').html(this.html);
+				this.excludedIds.forEach(function (id) {
+					$html.find('#' + id).html($('#' + id).html());
+				});
+				html = $html.html();
+			} else {
+				html = this.html;
+			}
+			updatedSnippets[this.id] = html;
+		});
+		this.snippetsExt.updateSnippets(updatedSnippets, true);
+		$.nette.load();
+	},
+	createState: function (href, title, newSnippets) {
+		currentStateId++;
+		uiStates[currentStateId] = {newSnippets: newSnippets};
+		return {
+			id: currentStateId,
 			nette: true,
 			href: href,
 			title: title,
-			ui: this.cache ? this.extractSnippets(newSnippets) : null
 		};
+	},
+	pushState: function (href, title, newSnippets, sender) {
+		var state = this.createState(href, title, newSnippets);
 		this.beforePushStateQueue.fire(state, sender);
 		history.pushState(state, title, href);
+		currentStateId = state.id;
+	},
+	saveSnippets: function () {
+		var state = uiStates[currentStateId];
+		state.snippets = this.extractSnippets(state.newSnippets);
+		this.beforeSaveStateQueue.fire(state);
 	},
 	extractSnippets: function (newSnippets) {
 		var snippets = {};
