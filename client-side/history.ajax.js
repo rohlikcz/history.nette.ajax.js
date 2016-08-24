@@ -101,19 +101,21 @@ $.nette.ext('history', {
 	},
 	updateSnippets: function (snippets) {
 		var updatedSnippets = {};
-		$.each(snippets, function () {
-			var html;
-			if (this.excludedIds) {
-				var $html = $('<div>').html(this.html);
-				this.excludedIds.forEach(function (id) {
-					$html.find('#' + id).html($('#' + id).html());
-				});
-				html = $html.html();
-			} else {
-				html = this.html;
-			}
-			updatedSnippets[this.id] = html;
-		});
+		if (typeof snippets != "undefined") {
+			$.each(snippets, function () {
+				var html;
+				if (this.excludedIds) {
+					var $html = $('<div>').html(this.html);
+					this.excludedIds.forEach(function (id) {
+						$html.find('#' + id).html($('#' + id).html());
+					});
+					html = $html.html();
+				} else {
+					html = this.html;
+				}
+				updatedSnippets[this.id] = html;
+			});
+		}
 		this.snippetsExt.updateSnippets(updatedSnippets, true);
 		$.nette.load();
 	},
